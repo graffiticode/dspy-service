@@ -1,0 +1,51 @@
+steps:
+  # Build Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/graffiticode/dspy-service:$_TAG'
+      - '-t'
+      - 'gcr.io/graffiticode/dspy-service:latest'
+      - '.'
+
+  # Push image to Container Registry
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - '--all-tags'
+      - 'gcr.io/graffiticode/dspy-service'
+    id: Push
+
+  # Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:slim'
+    args:
+      - run
+      - deploy
+      - dspy-service
+      - '--platform=managed'
+      - '--image=gcr.io/graffiticode/dspy-service:$_TAG'
+      - '--region=$_DEPLOY_REGION'
+      - '--quiet'
+      - '--allow-unauthenticated'
+      - '--memory=512Mi'
+      - '--cpu=1'
+      - '--min-instances=0'
+      - '--max-instances=10'
+      - '--port=8080'
+    id: Deploy
+    entrypoint: gcloud
+
+images:
+  - 'gcr.io/graffiticode/dspy-service:$_TAG'
+  - 'gcr.io/graffiticode/dspy-service:latest'
+
+options:
+  substitutionOption: ALLOW_LOOSE
+
+substitutions:
+  _DEPLOY_REGION: us-central1
+  _TAG: latest
+
+tags:
+  - dspy-service
