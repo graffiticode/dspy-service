@@ -24,6 +24,11 @@ class Settings(BaseSettings):
 
     # Authentication
     internal_api_key: str = Field(default="", description="Internal API key for service-to-service auth")
+    # Local development only. Without a key the service refuses every protected route, unless this is set:
+    # a missing key must never open the service (it once did, silently, in production).
+    allow_unauthenticated_dev: bool = Field(
+        default=False, description="Serve protected routes without a key (local development only)"
+    )
 
     class Config:
         env_prefix = ""

@@ -1,5 +1,6 @@
 """FastAPI entry point for DSPy service."""
 
+import hmac
 import logging
 import sys
 
@@ -34,10 +35,14 @@ class APIKeyAuthMiddleware(BaseHTTPMiddleware):
         if request.url.path in self.PUBLIC_PATHS:
             return await call_next(request)
 
-        # Skip auth if no API key is configured (development mode)
+        # No key configured: fail CLOSED. This used to serve every protected route unauthenticated, which
+        # made removing the key the same as opening the service. Local development opts in explicitly.
         if not settings.internal_api_key:
-            logger.warning("No INTERNAL_API_KEY configured - running without authentication")
-            return await call_next(request)
+            if settings.allow_unauthenticated_dev:
+                logger.warning("ALLOW_UNAUTHENTICATED_DEV set - serving without authentication")
+                return await call_next(request)
+            logger.error(f"No INTERNAL_API_KEY configured - refusing {request.url.path}")
+            return JSONResponse(status_code=503, content={"detail": "Service authentication is not configured"})
 
         # Check for API key in header
         api_key = request.headers.get("X-API-Key") or request.headers.get("Authorization")
@@ -50,7 +55,7 @@ class APIKeyAuthMiddleware(BaseHTTPMiddleware):
             logger.warning(f"Missing API key for {request.url.path}")
             return JSONResponse(status_code=401, content={"detail": "Missing API key"})
 
-        if api_key != settings.internal_api_key:
+        if not hmac.compare_digest(api_key.encode(), settings.internal_api_key.encode()):
             logger.warning(f"Invalid API key for {request.url.path}")
             return JSONResponse(status_code=403, content={"detail": "Invalid API key"})
 

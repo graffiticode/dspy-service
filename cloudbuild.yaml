@@ -27,7 +27,7 @@ steps:
       - '--image=gcr.io/graffiticode/dspy-service:$_TAG'
       - '--region=$_DEPLOY_REGION'
       - '--quiet'
-      - '--allow-unauthenticated'
+      - '--no-allow-unauthenticated'
       - '--memory=512Mi'
       - '--cpu=1'
       - '--min-instances=0'
